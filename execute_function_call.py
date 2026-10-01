@@ -1,4 +1,4 @@
-from utils import get_tool_registry
+from get_tools import get_tool_registry
 
 
 def execute_function_call(function_call):

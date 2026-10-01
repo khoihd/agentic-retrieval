@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 from google import genai
 from smolagents import LiteLLMModel
 
+client = None
 
 def embed_text(text):
     client = get_client()
@@ -21,11 +22,16 @@ def cosine_similarity(a, b):
 
 
 def get_client() -> genai.Client:
+    global client
+    if client:
+        return client
+    
     load_dotenv()
     api_key = os.environ["GEMINI_API_KEY"]
     print("API key loaded:", bool(api_key))
     client = genai.Client(api_key=api_key)
     return client
+
 
 def get_local_agent():
     model = LiteLLMModel(

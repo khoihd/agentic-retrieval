@@ -36,7 +36,6 @@ def run_agent(user_query, retrieval_max_steps=3, max_steps=10):
         )
 
         state["step"] += 1
-
         model_content = response.candidates[0].content
         state["contents"].append(model_content)
 

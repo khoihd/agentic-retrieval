@@ -8,6 +8,21 @@ from MemoryRelationship import MemoryRelationship
 MEMORY_FILE = "memories.json"
 
 def search_memory(query):
+    """
+    Search persistent memory created from previous interactions.
+    Use this to retrieve relevant user preferences, previous decisions,
+    project-specific facts learned in earlier conversations, and other
+    remembered information. This function searches memory, not shared
+    company documents, policies, or other external knowledge sources.
+
+    Args:
+        query: A semantic search query describing the remembered
+            information needed.
+
+    Returns:
+        A formatted string containing relevant retrieved memories, or a
+        message indicating that no relevant memories were found.
+    """
     memories = load_memories()
     results = find_related_memories(
         query,
