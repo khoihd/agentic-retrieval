@@ -5,8 +5,10 @@ from google import genai
 from smolagents import LiteLLMModel
 
 client = None
+    
 
-def embed_text(text):
+
+def embed_text(text: str) -> list[float]:
     client = get_client()
     response = client.models.embed_content(
         model="gemini-embedding-001",

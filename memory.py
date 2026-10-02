@@ -7,6 +7,30 @@ from MemoryRelationship import MemoryRelationship
 
 MEMORY_FILE = "memories.json"
 
+
+def rerank_memories(original_query, memories):
+    query_embedding = embed_text(original_query)
+    reranked_memories = []
+
+    for memory in memories:
+        memory_embedding = memory["embedding"]
+        rerank_score = cosine_similarity(
+            query_embedding,
+            memory_embedding,
+        )
+
+        reranked_memory = memory.copy()
+        reranked_memory["rerank_score"] = rerank_score
+        reranked_memories.append(reranked_memory)
+
+    reranked_memories.sort(
+        key=lambda x: x["rerank_score"],
+        reverse=True,
+    )
+
+    return reranked_memories
+
+
 def search_memory(query):
     """
     Search persistent memory created from previous interactions.
@@ -27,22 +51,36 @@ def search_memory(query):
     results = find_related_memories(
         query,
         memories,
-        top_k=3,
+        top_k=1,
     )
 
     if not results:
         return "No relevant memories found."
 
-    selected_memories = [result["memory"] for result in results]
+    memories = []
+    for result in results:
+        memory = result["memory"]
+        memories.append(
+            {   "id": str(uuid.uuid4()),
+                "text": memory["text"],
+                "memory_type": memory["memory_type"],
+                "scope": memory["scope"],
+                "embedding": memory["embedding"],
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "status": "active",
+                "score": float(result["score"]),
+            }
+        )
 
-    return format_memory_context(selected_memories)
+    return memories
 
-def format_memory_context(retrieved_memories: list[dict]):
+
+def format_memory_retrieval_context(retrieved_memories: list[dict]):
     formatted = []
     for memory in retrieved_memories:
         formatted.append(
-            f"""ID: {memory["id"]}
-Text: {memory["text"]}"""
+            f"""MEMORY: {memory["id"]}
+MEMORY TEXT: {memory["text"]}"""
         )
 
     return "\n\n".join(formatted)
@@ -122,6 +160,7 @@ def create_memory(memory):
 
 
 def find_related_memories(query, memories, top_k=3):
+    """Return a list of memory and score"""
     query_embedding = embed_text(query)
     results = []
 
@@ -175,6 +214,7 @@ def classify_memory_relationship(new_memory, existing_memories):
     )
 
     return response.parsed
+
 
 def get_search_memory_declaration() -> types.FunctionDeclaration:
     return types.FunctionDeclaration(

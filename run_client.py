@@ -1,10 +1,10 @@
 from google.genai import types
 from utils import get_client
+from build_context import generate_grounded_answer, build_retrieval_context
 from get_tools import get_agent_tools
-from search_documents import build_retrieval_context, generate_grounded_answer
 from execute_function_call import execute_function_call
 
-def run_agent(user_query, retrieval_max_steps=3, max_steps=10):
+def run_agent(user_query: str, retrieval_max_steps: int = 3, max_steps: int = 10) -> None:
     contents = [types.Content(role="user", parts=[types.Part(text=user_query)])]
 
     state = {
@@ -14,11 +14,12 @@ def run_agent(user_query, retrieval_max_steps=3, max_steps=10):
         "retrieval_step": 0,
         "retrieval_max_steps": retrieval_max_steps,
         "retrieved_chunks": [],
+        "retrieved_memories": [],
         "retrieval_errors": [],
         "status": "running",
     }
 
-    print(f"Step {state['step']}")
+    print(f"=====Step {state['step']}=====")
     print(f"User query: {user_query}")
 
     client = get_client()
@@ -49,21 +50,20 @@ def run_agent(user_query, retrieval_max_steps=3, max_steps=10):
         if not function_calls:
             state["status"] = "success"
 
-            # No document retrieval happened.
-            # The agent's direct answer is sufficient.
-            if not state["retrieved_chunks"]:
+            # No document or memory retrieval happened.
+            if not state["retrieved_chunks"] and not state["retrieved_memories"]:
                 return response.text
 
-            context_chunks = build_retrieval_context(
+            context_chunks, context_memories = build_retrieval_context(
                 user_query,
                 state["retrieved_chunks"],
-                max_chars=700
+                state["retrieved_memories"]
             )
 
-            grounded_answer = generate_grounded_answer(user_query, context_chunks)
+            grounded_answer = generate_grounded_answer(user_query, context_chunks, context_memories)
             return grounded_answer
 
-        print(f"Step {state['step']}")
+        print(f"=====Step {state['step']}=====")
 
         function_response_parts = []
 
@@ -90,6 +90,9 @@ def run_agent(user_query, retrieval_max_steps=3, max_steps=10):
                     if function_call.name == "search_documents":
                         for chunk in result["result"]:
                             state['retrieved_chunks'].append(chunk)
+                    elif function_call.name == "search_memory":
+                        for memory in result["result"]:
+                            state['retrieved_memories'].append(memory)
                 except Exception as e:
                     error = {
                         "error": "retrieval_failed",
@@ -100,7 +103,10 @@ def run_agent(user_query, retrieval_max_steps=3, max_steps=10):
 
             print(f"tool_name: {function_call.name}")
             print(f"args: {function_call.args}")
-            print(f"result: {result}")
+            for r in result['result']:
+                for key, value in r.items():
+                    if key != "embedding":
+                        print(key, value)
 
             function_response_parts.append(
                 types.Part.from_function_response(

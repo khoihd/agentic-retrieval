@@ -1,7 +1,7 @@
 import re
 from pathlib import Path
 from google.genai import types
-from utils import embed_text, cosine_similarity, get_client
+from utils import embed_text, cosine_similarity
 
 
 def split_into_sentences(text):
@@ -75,7 +75,7 @@ def chunk_section(section_text, max_chars=500, overlap_sentences=1):
     return chunks
 
 
-def split_into_sections(text):
+def split_into_sections(text: str) -> list[dict]:
     sections = []
     current_section = "Introduction"
     current_lines = []
@@ -102,37 +102,7 @@ def split_into_sections(text):
     return sections
 
 
-def generate_grounded_answer(user_query, context_chunks):
-    evidence = format_retrieval_context(context_chunks)
-    prompt = f"""
-Answer the user's question using only the evidence provided below.
-Rules:
-- Do not use information that is not supported by the evidence.
-- Cite factual claims using the supporting SOURCE id in square brackets.
-- If the evidence does not establish part of the answer, explicitly say so.
-- Do not infer or invent missing company policy.
-
-USER QUESTION:
-{user_query}
-
-EVIDENCE:
-{evidence}
-"""
-    client = get_client()
-    response = client.models.generate_content(
-        model="gemini-flash-lite-latest",
-        contents=prompt,
-        config=types.GenerateContentConfig(
-            automatic_function_calling=types.AutomaticFunctionCallingConfig(
-                disable=True
-            ),
-        ),
-    )
-
-    return response.text
-
-
-def format_retrieval_context(context_chunks):
+def format_document_retrieval_context(context_chunks):
     sections = []
     for chunk in context_chunks:
         sections.append(
@@ -143,37 +113,6 @@ def format_retrieval_context(context_chunks):
         )
 
     return "\n\n".join(sections)
-
-
-def build_retrieval_context(original_query, retrieved_chunks, max_chars=4000):
-    seen = set()
-    unique_chunks = []
-
-    for chunk in retrieved_chunks:
-        chunk_id = chunk["chunk_id"]
-
-        if chunk_id in seen:
-            continue
-
-        seen.add(chunk_id)
-        unique_chunks.append(chunk)
-
-    reranked_chunks = rerank_chunks(
-        original_query,
-        unique_chunks,
-    )
-
-    selected_chunks = []
-    used_chars = 0
-    for chunk in reranked_chunks:
-        chunk_size = len(chunk["text"])
-        if used_chars + chunk_size > max_chars:
-            continue
-
-        selected_chunks.append(chunk)
-        used_chars += chunk_size
-
-    return selected_chunks
 
 
 def get_search_documents_declaration() -> types.FunctionDeclaration:
@@ -195,7 +134,7 @@ def get_search_documents_declaration() -> types.FunctionDeclaration:
     )
 
 
-def load_document(file_path, document_id, title, category=None):
+def load_document(file_path: str, document_id: str, title: str, category=None) -> dict:
     path = Path(file_path)
 
     with path.open("r", encoding="utf-8") as f:
@@ -210,7 +149,7 @@ def load_document(file_path, document_id, title, category=None):
     }
 
 
-def chunk_document(document, max_chars=500, overlap_sentences=1):
+def chunk_document(document: dict, max_chars: int = 500, overlap_sentences: int = 1) -> list[dict]:
     chunks = []
     chunk_index = 0
     sections = split_into_sections(document["text"])
