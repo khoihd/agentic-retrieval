@@ -1,9 +1,10 @@
 import json
 import uuid
 from datetime import datetime, timezone
-from utils import embed_text, cosine_similarity, get_client
-from google.genai import types
+from utils import embed_text, cosine_similarity, MODEL
 from MemoryRelationship import MemoryRelationship
+from ollama import chat
+from pydantic import TypeAdapter
 
 MEMORY_FILE = "memories.json"
 
@@ -61,7 +62,8 @@ def search_memory(query):
     for result in results:
         memory = result["memory"]
         memories.append(
-            {   "id": str(uuid.uuid4()),
+            {
+                "id": str(uuid.uuid4()),
                 "text": memory["text"],
                 "memory_type": memory["memory_type"],
                 "scope": memory["scope"],
@@ -200,40 +202,47 @@ def classify_memory_relationship(new_memory, existing_memories):
     {existing_memories}
     """
 
-    client = get_client()
-    response = client.models.generate_content(
-        model="gemini-flash-lite-latest",
-        contents=prompt,
-        config=types.GenerateContentConfig(
-            response_mime_type="application/json",
-            response_schema=list[MemoryRelationship],
-            automatic_function_calling=types.AutomaticFunctionCallingConfig(
-                disable=True
-            ),
-        ),
-    )
-
-    return response.parsed
-
-
-def get_search_memory_declaration() -> types.FunctionDeclaration:
-    return types.FunctionDeclaration(
-        name="search_memory",
-        description=(
-            "Search persistent memory from previous interactions for relevant "
-            "user preferences, project information, previous decisions, and "
-            "other remembered information."
-        ),
-        parameters_json_schema={
-            "type": "object",
-            "properties": {
-                "query": {
-                    "type": "string",
-                    "description": (
-                        "Search query describing the remembered information needed."
-                    ),
-                }
-            },
-            "required": ["query"],
+    relationship_list_adapter = TypeAdapter(list[MemoryRelationship])
+    response = chat(
+        model=MODEL,
+        messages=[
+            {
+                "role": "user",
+                "content": prompt,
+            }
+        ],
+        format=relationship_list_adapter.json_schema(),
+        options={
+            "temperature": 0,
         },
+        think=False
     )
+
+    return relationship_list_adapter.validate_json(response.message.content)
+
+
+def get_search_memory_declaration() -> dict:
+    return {
+        "type": "function",
+        "function": {
+            "name": "search_memory",
+            "description": (
+                "Search persistent memory from previous interactions for "
+                "user preferences, previous decisions, project-specific facts, "
+                "and other remembered information. Do not use this to search "
+                "shared company documents or policies."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": (
+                            "Search query describing the rememberedinformation needed."
+                        ),
+                    }
+                },
+                "required": ["query"],
+            },
+        },
+    }

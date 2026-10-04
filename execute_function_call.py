@@ -2,9 +2,13 @@ from get_tools import get_tool_registry
 
 
 def execute_function_call(function_call):
-    tool_name = function_call.name
+    print(
+        f"execute_function_call: {function_call.function.name} with {dict(function_call.function.arguments)}"
+    )
+
+    tool_name = function_call.function.name
     tool = get_tool_registry().get(tool_name)
-    args = dict(function_call.args)
+    args = dict(function_call.function.arguments)
 
     if tool is None:
         return {

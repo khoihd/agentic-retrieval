@@ -7,10 +7,9 @@ from memory import (
     classify_memory_relationship,
     process_new_memory,
 )
-from utils import get_client
 from run_client import run_agent
-from google.genai import types
-
+from ollama import chat
+from utils import MODEL
 
 def test_memory_context():
     user_query = "What Python version should I use for Project X?"
@@ -25,18 +24,13 @@ def test_memory_context():
     {user_query}
     """
 
-    client = get_client()
-    response = client.models.generate_content(
-        model="gemini-flash-lite-latest",
-        contents=prompt,
-        config=types.GenerateContentConfig(
-            automatic_function_calling=types.AutomaticFunctionCallingConfig(
-                disable=True
-            ),
-        ),
+    response = chat(
+        model=MODEL,
+        messages=prompt,
+        think=False,
     )
 
-    print(response.text)
+    print(response.message.content)
 
 
 def test_persist_memory():
@@ -168,3 +162,7 @@ def test_document_query():
 
     result = run_agent(original_query)
     print(result)
+
+if __name__ == "__main__":
+    # test_memory_context()
+    test_document_query()

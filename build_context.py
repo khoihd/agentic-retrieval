@@ -1,7 +1,8 @@
 from search_documents import rerank_chunks, format_document_retrieval_context
 from memory import rerank_memories, format_memory_retrieval_context
-from google.genai import types
-from utils import get_client
+from ollama import chat
+from utils import MODEL
+
 
 def build_retrieval_context(original_query, retrieved_chunks, retrieved_memories):
     chunk_seen = set()
@@ -19,7 +20,7 @@ def build_retrieval_context(original_query, retrieved_chunks, retrieved_memories
         unique_chunks.append(chunk)
 
     for memory in retrieved_memories:
-        memory_id = memory['id']
+        memory_id = memory["id"]
         if memory_id in memory_seen:
             continue
 
@@ -31,15 +32,16 @@ def build_retrieval_context(original_query, retrieved_chunks, retrieved_memories
         unique_chunks,
     )
 
-    context_memories = rerank_memories(
-        original_query,
-        unique_memories
-    )
+    context_memories = rerank_memories(original_query, unique_memories)
 
     return context_chunks, context_memories
 
 
-def generate_grounded_answer(user_query, context_documents, context_memories,):
+def generate_grounded_answer(
+    user_query,
+    context_documents,
+    context_memories,
+):
     evidence = format_document_retrieval_context(context_documents)
     memory = format_memory_retrieval_context(context_memories)
     prompt = f"""
@@ -62,16 +64,10 @@ DOCUMENT EVIDENCE:
 MEMORY:
 {memory}
 """
-    client = get_client()
-    response = client.models.generate_content(
-        model="gemini-flash-lite-latest",
-        contents=prompt,
-        config=types.GenerateContentConfig(
-            automatic_function_calling=
-                types.AutomaticFunctionCallingConfig(
-                    disable=True
-                ),
-        ),
+    response = chat(
+        model=MODEL,
+        messages=[{"role": "user", "content": prompt}],
+        think=False,
     )
 
-    return response.text
+    return response.message.content

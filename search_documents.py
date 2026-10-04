@@ -1,6 +1,5 @@
 import re
 from pathlib import Path
-from google.genai import types
 from utils import embed_text, cosine_similarity
 
 
@@ -115,23 +114,26 @@ def format_document_retrieval_context(context_chunks):
     return "\n\n".join(sections)
 
 
-def get_search_documents_declaration() -> types.FunctionDeclaration:
-    return types.FunctionDeclaration(
-        name="search_documents",
-        description=(
-            "Search internal company documents for information relevant to a query."
-        ),
-        parameters_json_schema={
-            "type": "object",
-            "properties": {
-                "query": {
-                    "type": "string",
-                    "description": "Search query describing the information needed.",
-                }
+def get_search_documents_declaration() -> dict:
+    return {
+        "type": "function",
+        "function": {
+            "name": "search_documents",
+            "description": (
+                "Search internal company documents for information relevant to a query."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "Search query describing the information needed.",
+                    },
+                },
+                "required": ["query"],
             },
-            "required": ["query"],
         },
-    )
+    }
 
 
 def load_document(file_path: str, document_id: str, title: str, category=None) -> dict:
