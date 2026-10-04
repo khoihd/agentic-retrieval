@@ -26,17 +26,17 @@ def build_retrieval_context(original_query, retrieved_chunks, retrieved_memories
         memory_seen.add(memory_id)
         unique_memories.append(memory)
 
-    reranked_chunks = rerank_chunks(
+    context_chunks = rerank_chunks(
         original_query,
         unique_chunks,
     )
 
-    reranked_memories = rerank_memories(
+    context_memories = rerank_memories(
         original_query,
         unique_memories
     )
 
-    return reranked_chunks, reranked_memories
+    return context_chunks, context_memories
 
 
 def generate_grounded_answer(user_query, context_documents, context_memories,):

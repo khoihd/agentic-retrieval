@@ -51,7 +51,7 @@ def search_memory(query):
     results = find_related_memories(
         query,
         memories,
-        top_k=1,
+        top_k=3,
     )
 
     if not results:

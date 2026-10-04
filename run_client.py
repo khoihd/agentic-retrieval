@@ -103,6 +103,11 @@ def run_agent(user_query: str, retrieval_max_steps: int = 3, max_steps: int = 10
 
             print(f"tool_name: {function_call.name}")
             print(f"args: {function_call.args}")
+            print(result.keys())
+            if 'error' in result:
+                print(result['error'])
+                print(result['message'])
+
             for r in result['result']:
                 for key, value in r.items():
                     if key != "embedding":
