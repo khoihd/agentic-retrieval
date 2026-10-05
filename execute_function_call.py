@@ -1,14 +1,11 @@
 from get_tools import get_tool_registry
-
+import json
 
 def execute_function_call(function_call):
-    print(
-        f"execute_function_call: {function_call.function.name} with {dict(function_call.function.arguments)}"
-    )
-
     tool_name = function_call.function.name
     tool = get_tool_registry().get(tool_name)
-    args = dict(function_call.function.arguments)
+    args = json.loads(function_call.function.arguments)
+    print(f"execute_function_call: {tool_name} with {args}")
 
     if tool is None:
         return {

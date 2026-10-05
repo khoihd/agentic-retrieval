@@ -32,7 +32,7 @@ def rerank_memories(original_query, memories):
     return reranked_memories
 
 
-def search_memory(query):
+def search_memory(query, scope=None):
     """
     Search persistent memory created from previous interactions.
     Use this to retrieve relevant user preferences, previous decisions,
@@ -52,6 +52,7 @@ def search_memory(query):
     results = find_related_memories(
         query,
         memories,
+        scope,
         top_k=3,
     )
 
@@ -161,13 +162,16 @@ def create_memory(memory):
     }
 
 
-def find_related_memories(query, memories, top_k=3):
+def find_related_memories(query, memories, scope=None, top_k=3):
     """Return a list of memory and score"""
     query_embedding = embed_text(query)
     results = []
 
     for memory in memories:
-        if memory["status"] == "active":
+        if memory["status"] != "active":
+            continue
+
+        if not scope or memory["scope"] == scope:
             score = cosine_similarity(query_embedding, memory["embedding"])
             results.append({"memory": memory, "score": score})
 
@@ -215,7 +219,7 @@ def classify_memory_relationship(new_memory, existing_memories):
         options={
             "temperature": 0,
         },
-        think=False
+        think=False,
     )
 
     return relationship_list_adapter.validate_json(response.message.content)
@@ -238,9 +242,16 @@ def get_search_memory_declaration() -> dict:
                     "query": {
                         "type": "string",
                         "description": (
-                            "Search query describing the rememberedinformation needed."
+                            "Search query describing the remembered information needed."
                         ),
-                    }
+                    },
+                    "scope": {
+                        "type": "string",
+                        "description": (
+                            "Optional scope used to restrict the memory search, "
+                            "such as 'project_x'. Omit when no specific scope is known."
+                        ),
+                    },
                 },
                 "required": ["query"],
             },

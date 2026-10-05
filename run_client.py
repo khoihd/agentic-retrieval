@@ -1,8 +1,8 @@
 from build_context import generate_grounded_answer, build_retrieval_context
 from get_tools import get_agent_tools
 from execute_function_call import execute_function_call
-from ollama import chat
-from utils import MODEL, SYSTEM_PROMPT
+# from ollama import chat
+from utils import get_client, MODEL, SYSTEM_PROMPT
 
 
 def run_agent(
@@ -30,24 +30,23 @@ def run_agent(
 
     agent_tools = get_agent_tools()
     while state["status"] == "running" and state["step"] < state["max_steps"]:
-        response = chat(
-            model=MODEL,
+        response = get_client().chat.completions.create(
+            model="qwen3:4b",
             messages=state["messages"],
             tools=agent_tools,
-            think=False,
         )
 
-        state["messages"].append(response.message)
+        state["messages"].append(response.choices[0].message)
 
         state["step"] += 1
 
         # If there is no tool to run, return the text of the last response
-        if not response.message.tool_calls:
+        if not response.choices[0].message.tool_calls:
             state["status"] = "success"
 
             # No document or memory retrieval happened.
             if not state["retrieved_chunks"] and not state["retrieved_memories"]:
-                return response.message.content
+                return response.choices[0].message.content
 
             context_chunks, context_memories = build_retrieval_context(
                 user_query, state["retrieved_chunks"], state["retrieved_memories"]
@@ -59,10 +58,9 @@ def run_agent(
             return grounded_answer
 
         print(f"=====Step {state['step']}=====")
-        print(response.message.content)
-        function_response_parts = []
+        function_call_results = []
 
-        for function_call in response.message.tool_calls:
+        for function_call in response.choices[0].message.tool_calls:
             if (
                 function_call.function.name == "search_documents"
                 and state["retrieval_step"] >= state["retrieval_max_steps"]
@@ -77,7 +75,6 @@ def run_agent(
                         "from the available evidence."
                     ),
                 }
-                print(f"result: {result}")
             else:
                 try:
                     if function_call.function.name == "search_documents":
@@ -101,20 +98,20 @@ def run_agent(
 
             print(f"tool_name: {function_call.function.name}")
             print(f"args: {function_call.function.arguments}")
-            print(result)
             if "error" in result:
                 print(result["error"])
                 print(result["message"])
 
-            function_response_parts.append(
+            function_call_results.append(
                 {
                     "role": "tool",
+                    "tool_call_id": function_call.id, 
                     "tool_name": function_call.function.name,
                     "content": str(result),
                 }
             )
 
-        state["messages"].extend(function_response_parts)
+        state["messages"].extend(function_call_results)
 
     state["status"] = "failed"
     raise RuntimeError(f"Agent exceeded maximum number of steps ({max_steps})")

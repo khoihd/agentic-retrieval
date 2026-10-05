@@ -1,4 +1,7 @@
 import numpy as np
+from dotenv import load_dotenv
+from openai import OpenAI
+import os
 import ollama
 
 MODEL = "qwen3:4b"
@@ -19,14 +22,37 @@ information to answer each part. If a tool result answers only part of the
 question, search again with a reformulated query for the missing information.
 """
 
+load_dotenv()
+client = None
+
+def get_client():
+    global client
+    if client:
+        return client 
+    
+    # Local Ollama
+    client = OpenAI(
+        base_url="http://localhost:11434/v1",
+        api_key="ollama",
+    )
+
+    # OR OpenRouter
+    # client = OpenAI(
+    #     base_url="https://openrouter.ai/api/v1",
+    #     api_key=os.getenv("OPENROUTER_API_KEY"),
+    # )
+
+    return client
+
 def embed_text(text: str) -> list[float]:
     response = ollama.embed(model="nomic-embed-text", input=text)
 
-    return response["embeddings"]
+    return response["embeddings"][0]
 
 
 def cosine_similarity(a, b):
-    a = np.squeeze(a)
-    b = np.squeeze(b)
+    a = np.array(a)
+    b = np.array(b)
 
     return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
+

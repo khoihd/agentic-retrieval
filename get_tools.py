@@ -3,7 +3,7 @@ from search_documents import search_documents, get_search_documents_declaration
 from memory import search_memory, get_search_memory_declaration
 
 
-def get_agent_tools() -> dict:
+def get_agent_tools() -> list:
     return [
         get_stock_price_declaration(),
         get_search_documents_declaration(),
