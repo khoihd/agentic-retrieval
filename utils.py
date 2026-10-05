@@ -1,11 +1,14 @@
 import numpy as np
 from dotenv import load_dotenv
 from openai import OpenAI
-import os
 import ollama
 
-MODEL = "qwen3:4b"
+# MODEL = "qwen3:4b"
 # MODEL = "qwen3:8b"
+MODEL = "qwen3.5:4b"
+# MODEL = "qwen3.5:9b"
+
+MAX_MEMORY_RETRIEVAL = 20
 
 SYSTEM_PROMPT = """
 You are an assistant with access to tools.
@@ -35,12 +38,6 @@ def get_client():
         base_url="http://localhost:11434/v1",
         api_key="ollama",
     )
-
-    # OR OpenRouter
-    # client = OpenAI(
-    #     base_url="https://openrouter.ai/api/v1",
-    #     api_key=os.getenv("OPENROUTER_API_KEY"),
-    # )
 
     return client
 

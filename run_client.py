@@ -31,7 +31,7 @@ def run_agent(
     agent_tools = get_agent_tools()
     while state["status"] == "running" and state["step"] < state["max_steps"]:
         response = get_client().chat.completions.create(
-            model="qwen3:4b",
+            model=MODEL,
             messages=state["messages"],
             tools=agent_tools,
         )

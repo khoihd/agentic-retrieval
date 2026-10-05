@@ -1,7 +1,7 @@
 import json
 import uuid
 from datetime import datetime, timezone
-from utils import embed_text, cosine_similarity, MODEL
+from utils import embed_text, cosine_similarity, MODEL, MAX_MEMORY_RETRIEVAL
 from MemoryRelationship import MemoryRelationship
 from ollama import chat
 from pydantic import TypeAdapter
@@ -32,7 +32,7 @@ def rerank_memories(original_query, memories):
     return reranked_memories
 
 
-def search_memory(query, scope=None):
+def search_memory(query, scope=None, top_k=3):
     """
     Search persistent memory created from previous interactions.
     Use this to retrieve relevant user preferences, previous decisions,
@@ -48,12 +48,13 @@ def search_memory(query, scope=None):
         A formatted string containing relevant retrieved memories, or a
         message indicating that no relevant memories were found.
     """
+    top_k = min(top_k, MAX_MEMORY_RETRIEVAL)
     memories = load_memories()
     results = find_related_memories(
         query,
         memories,
         scope,
-        top_k=3,
+        top_k,
     )
 
     if not results:
@@ -250,6 +251,14 @@ def get_search_memory_declaration() -> dict:
                         "description": (
                             "Optional scope used to restrict the memory search, "
                             "such as 'project_x'. Omit when no specific scope is known."
+                        ),
+                    },
+                    "top_k": {
+                        "type": "integer",
+                        "description": (
+                            "Maximum number of relevant memories to retrieve. "
+                            "Use a small value for specific questions and a larger "
+                            "value for broad questions that require more complete coverage."
                         ),
                     },
                 },
