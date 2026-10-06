@@ -1,6 +1,6 @@
 [
   {
-    "id": "728a5176-c64d-4b66-83e5-e306c458da70",
+    "id": "93afe4bf-69d9-4690-b972-7dda07e76b6f",
     "text": "Project X uses PostgreSQL for its primary database.",
     "memory_type": "project_fact",
     "scope": "project_x",
@@ -774,11 +774,11 @@
       -0.037488963,
       0.045464892
     ],
-    "created_at": "2026-10-05T05:52:59.503144+00:00",
+    "created_at": "2026-10-05T19:34:42.693445+00:00",
     "status": "active"
   },
   {
-    "id": "51ca60d7-e17f-44b5-b47f-f41f96873fb1",
+    "id": "3239fd71-dc2a-484e-97fe-923f3ed851cc",
     "text": "Project X uses Redis for caching.",
     "memory_type": "project_fact",
     "scope": "project_x",
@@ -1552,11 +1552,11 @@
       0.021550696,
       0.021330157
     ],
-    "created_at": "2026-10-05T05:52:59.518400+00:00",
+    "created_at": "2026-10-05T19:34:42.713977+00:00",
     "status": "active"
   },
   {
-    "id": "222e5e5a-83c3-4c4e-af88-b36e611b668d",
+    "id": "ed7a97d4-636e-4fe1-b535-ac7c33a67ad9",
     "text": "Project X uses FastAPI for its API layer.",
     "memory_type": "project_fact",
     "scope": "project_x",
@@ -2330,11 +2330,11 @@
       -0.01294708,
       -0.0016232698
     ],
-    "created_at": "2026-10-05T05:52:59.532237+00:00",
+    "created_at": "2026-10-05T19:34:42.737341+00:00",
     "status": "active"
   },
   {
-    "id": "c53ac469-c8e2-45bd-97fa-ef745ef3dd6d",
+    "id": "4ba7a281-f986-4ab2-9c54-38d321333969",
     "text": "Project X uses Docker for local development.",
     "memory_type": "project_fact",
     "scope": "project_x",
@@ -3108,11 +3108,11 @@
       -0.02054142,
       0.027450172
     ],
-    "created_at": "2026-10-05T05:52:59.544718+00:00",
+    "created_at": "2026-10-05T19:34:42.754832+00:00",
     "status": "active"
   },
   {
-    "id": "ab07170f-e7ef-47ce-b629-fd30ff764be3",
+    "id": "dabd3600-16c7-4165-8f37-edc53022fea0",
     "text": "Project X requires Python 3.13.",
     "memory_type": "project_fact",
     "scope": "project_x",
@@ -3886,7 +3886,7 @@
       -0.03533458,
       0.0058872965
     ],
-    "created_at": "2026-10-05T05:52:59.557692+00:00",
+    "created_at": "2026-10-05T19:34:42.770665+00:00",
     "status": "active"
   }
 ]

@@ -3,8 +3,6 @@ from dotenv import load_dotenv
 from openai import OpenAI
 import ollama
 
-# MODEL = "qwen3:4b"
-# MODEL = "qwen3:8b"
 MODEL = "qwen3.5:4b"
 # MODEL = "qwen3.5:9b"
 
@@ -38,6 +36,8 @@ def get_client():
         base_url="http://localhost:11434/v1",
         api_key="ollama",
     )
+    
+    print(f"Running model {MODEL}")
 
     return client
 
