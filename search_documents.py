@@ -19,8 +19,10 @@ def rerank_chunks(original_query, chunks):
             chunk_embedding,
         )
 
-        reranked_chunk = chunk.copy()
-        reranked_chunk["rerank_score"] = rerank_score
+        reranked_chunk = {
+            "chunk": chunk,
+            "rerank_score": rerank_score
+        }
         reranked_chunks.append(reranked_chunk)
 
     reranked_chunks.sort(
@@ -28,7 +30,8 @@ def rerank_chunks(original_query, chunks):
         reverse=True,
     )
 
-    return reranked_chunks
+    return [entry["chunk"] for entry in reranked_chunks]
+
 
 
 def search_chunks(query, chunks, top_k=3):

@@ -1,27 +1,99 @@
 import json
 import uuid
 from datetime import datetime, timezone
+from typing import Literal
+
 from utils import embed_text, cosine_similarity, MODEL, MAX_MEMORY_RETRIEVAL
-from MemoryRelationship import MemoryRelationship
-from ollama import chat
-from pydantic import TypeAdapter
+from MemoryRelationship import MemoryRelationship, MemoryRelationshipList
+from pydantic import BaseModel
+from utils import get_client
+
 
 MEMORY_FILE = "memories.json"
 
 
-def rerank_memories(original_query, memories):
+class Memory(BaseModel):
+    id: str
+    text: str
+    memory_type: str
+    scope: str
+    embedding: list[float]
+    created_at: str
+    status: Literal["active", "superseded", "conflicted"]
+
+
+class ExtractedMemory(BaseModel):
+    text: str
+    memory_type: str
+    scope: str
+
+
+class ExtractedMemoryList(BaseModel):
+    memories: list[ExtractedMemory]
+
+
+def extract_memories(text: str) -> list[ExtractedMemory]:
+    prompt = f"""
+
+Extract information from the input that is worth storing in long-term memory.
+
+Store information that:
+- is likely to be useful in future interactions
+- is reasonably durable rather than temporary
+- describes user preferences, decisions, or project-specific facts
+- can be represented as a clear, self-contained fact
+
+Do not store:
+- conversational filler
+- questions that contain no useful durable information
+- temporary task state that is only useful in the current interaction
+- information unlikely to matter in future interactions
+
+Guidelines:
+- Each memory should contain one atomic fact when possible.
+- Rewrite memories as clear, self-contained statements.
+- A single input may produce zero, one, or multiple memories.
+- Choose an appropriate memory_type.
+- Choose an appropriate scope.
+
+Scope rules:
+- Use "user" for information about the user's general preferences,
+  habits, or personal information.
+- For project-specific information, derive a normalized project scope.
+  For example:
+  "Project X" -> "project_x"
+  "Project Alpha" -> "project_alpha"
+- Do not use "global" for user-specific or project-specific information.
+
+INPUT:
+{text}
+"""
+    response = get_client().beta.chat.completions.parse(
+        model=MODEL,
+        messages=[
+            {"role": "user", "content": prompt},
+        ],
+        response_format=ExtractedMemoryList,
+        temperature=0,
+    )
+
+    extracted_memory_list = response.choices[0].message.parsed
+
+    return extracted_memory_list.memories
+
+
+def rerank_memories(original_query: str, memories: list[Memory]) -> list[Memory]:
     query_embedding = embed_text(original_query)
     reranked_memories = []
 
     for memory in memories:
-        memory_embedding = memory["embedding"]
+        memory_embedding = memory.embedding
         rerank_score = cosine_similarity(
             query_embedding,
             memory_embedding,
         )
 
-        reranked_memory = memory.copy()
-        reranked_memory["rerank_score"] = rerank_score
+        reranked_memory = {"memory": memory, "reranked_memory": rerank_score}
         reranked_memories.append(reranked_memory)
 
     reranked_memories.sort(
@@ -29,10 +101,10 @@ def rerank_memories(original_query, memories):
         reverse=True,
     )
 
-    return reranked_memories
+    return [entry["memory"] for entry in reranked_memories]
 
 
-def search_memory(query, scope=None, top_k=3):
+def search_memory(query: str, scope: str = "", top_k: int = 3) -> list[Memory]:
     """
     Search persistent memory created from previous interactions.
     Use this to retrieve relevant user preferences, previous decisions,
@@ -50,68 +122,53 @@ def search_memory(query, scope=None, top_k=3):
     """
     top_k = min(top_k, MAX_MEMORY_RETRIEVAL)
     memories = load_memories()
-    results = find_related_memories(
-        query,
-        memories,
-        scope,
-        top_k,
-    )
+    related_memories = find_related_memories(query, memories, scope, top_k)
 
-    if not results:
+    if not related_memories:
         return "No relevant memories found."
 
-    memories = []
-    for result in results:
-        memory = result["memory"]
-        memories.append(
-            {
-                "id": str(uuid.uuid4()),
-                "text": memory["text"],
-                "memory_type": memory["memory_type"],
-                "scope": memory["scope"],
-                "embedding": memory["embedding"],
-                "created_at": datetime.now(timezone.utc).isoformat(),
-                "status": "active",
-                "score": float(result["score"]),
-            }
-        )
-
-    return memories
+    return related_memories
 
 
-def format_memory_retrieval_context(retrieved_memories: list[dict]):
+def format_memory_retrieval_context(retrieved_memories: list[Memory]) -> str:
     formatted = []
     for memory in retrieved_memories:
         formatted.append(
-            f"""MEMORY: {memory["id"]}
-MEMORY TEXT: {memory["text"]}"""
+            f"""MEMORY: {memory.id}
+MEMORY TEXT: {memory.text}"""
         )
 
     return "\n\n".join(formatted)
 
 
 # Assuming proposed_memory takes some form with three fields: text, memory_type, and scope
-def process_new_memory(proposed_memory):
+def process_new_memory(user_query: str) -> None:
     # Load current memories
     existing_memories = load_memories()
+    
+    # Extract key memories from user_query
+    proposed_memories = extract_memories(user_query)
+    
+    if not existing_memories:
+        persist_memories([create_memory(m) for m in proposed_memories])
+        return
 
-    new_memory = create_memory(proposed_memory)
+    for proposed_memory in proposed_memories:
+        new_memory = create_memory(proposed_memory)
 
-    related_memories = find_related_memories(
-        new_memory["text"], existing_memories, top_k=3
-    )
-    if not related_memories:
-        existing_memories.append(new_memory)
-    else:
-        candidates = [m["memory"] for m in related_memories]
-        relationships = classify_memory_relationship(new_memory, candidates)
-        memory_update(new_memory, existing_memories, relationships)
+        related_memories = find_related_memories(new_memory.text, existing_memories, top_k=3)
+        
+        if not related_memories:
+            existing_memories.append(new_memory)
+        else:
+            relationships = classify_memory_relationship(new_memory, related_memories)
+            memory_update(new_memory, existing_memories, relationships)
 
     # Write the updated memories to the file
     persist_memories(existing_memories)
 
 
-def memory_update(new_memory, memories, relationships: list[MemoryRelationship]):
+def memory_update(new_memory: Memory, memories: list[Memory], relationships: list[MemoryRelationship]) -> None:
     # ["duplicate", "superseding", "conflicting", "related"]
     conflict = False
     superseding_ids = set()
@@ -124,63 +181,63 @@ def memory_update(new_memory, memories, relationships: list[MemoryRelationship])
             superseding_ids.add(r.id)
 
     for m in memories:
-        if m["id"] in superseding_ids:
-            m["status"] = "superseded"
+        if m.id in superseding_ids:
+            m.status = "superseded"
 
     if conflict:
-        new_memory["status"] = "conflicted"
+        new_memory.status = "conflicted"
     else:
-        new_memory["status"] = "active"
+        new_memory.status = "active"
 
     memories.append(new_memory)
 
 
-def persist_memories(memories):
+def persist_memories(memories: list[Memory]) -> None:
     with open(MEMORY_FILE, "w", encoding="utf-8") as f:
-        json.dump(memories, f, indent=2, ensure_ascii=False)
+        json.dump([memory.model_dump() for memory in memories], 
+                  f, indent=2, ensure_ascii=False)
 
 
-def load_memories():
-    existing_memory = []
+def load_memories() -> list[Memory]:
     try:
         with open(MEMORY_FILE, "r", encoding="utf-8") as file:
-            existing_memory = json.load(file)
+            data = json.load(file)
+
+        return [Memory.model_validate(item) for item in data]
     except (json.JSONDecodeError, FileNotFoundError):
-        existing_memory = []
-
-    return existing_memory
+        return []
 
 
-def create_memory(memory):
-    return {
-        "id": str(uuid.uuid4()),
-        "text": memory["text"],
-        "memory_type": memory["memory_type"],
-        "scope": memory["scope"],
-        "embedding": embed_text(memory["text"]),
-        "created_at": datetime.now(timezone.utc).isoformat(),
-        "status": "active",
-    }
+def create_memory(memory: ExtractedMemory) -> Memory:
+    return Memory(
+        id=str(uuid.uuid4()),
+        text=memory.text,
+        memory_type=memory.memory_type,
+        scope=memory.scope,
+        embedding=embed_text(memory.text),
+        created_at=datetime.now(timezone.utc).isoformat(),
+        status="active",
+    )
 
 
-def find_related_memories(query, memories, scope=None, top_k=3):
+def find_related_memories(query: str, memories: list[Memory], scope: str = None, top_k: int = 3) -> list[Memory]:
     """Return a list of memory and score"""
     query_embedding = embed_text(query)
     results = []
 
     for memory in memories:
-        if memory["status"] != "active":
+        if memory.status != "active":
             continue
 
-        if not scope or memory["scope"] == scope:
-            score = cosine_similarity(query_embedding, memory["embedding"])
+        if not scope or memory.scope == scope:
+            score = cosine_similarity(query_embedding, memory.embedding)
             results.append({"memory": memory, "score": score})
 
     results.sort(key=lambda x: x["score"], reverse=True)
-    return results[:top_k]
+    return [entry["memory"] for entry in results[:top_k]]
 
 
-def classify_memory_relationship(new_memory, existing_memories):
+def classify_memory_relationship(new_memory: Memory, existing_memories: list[Memory]):
     prompt = f"""
     Find the semantic relationship between the new memory, namely NEW_MEMORY, and every existing memory, called EXISTING_MEMORY, in the collection EXISTING_MEMORIES
     Rules:
@@ -207,23 +264,13 @@ def classify_memory_relationship(new_memory, existing_memories):
     {existing_memories}
     """
 
-    relationship_list_adapter = TypeAdapter(list[MemoryRelationship])
-    response = chat(
+    response = get_client().chat.completions.parse(
         model=MODEL,
-        messages=[
-            {
-                "role": "user",
-                "content": prompt,
-            }
-        ],
-        format=relationship_list_adapter.json_schema(),
-        options={
-            "temperature": 0,
-        },
-        think=False,
+        messages=[{"role": "user", "content": prompt}],
+        response_format=MemoryRelationshipList,
     )
 
-    return relationship_list_adapter.validate_json(response.message.content)
+    return response.choices[0].message.parsed.relationships
 
 
 def get_search_memory_declaration() -> dict:

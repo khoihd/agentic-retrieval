@@ -6,11 +6,11 @@ from memory import (
     create_memory,
     classify_memory_relationship,
     process_new_memory,
+    extract_memories
 )
 from run_client import run_agent
 from ollama import chat
 from utils import MODEL
-from memory_extraction import extract_memories
 
 def test_memory_context():
     user_query = "What Python version should I use for Project X?"
@@ -175,5 +175,24 @@ def test_memory_extraction():
     for extracted in extracted_memories:
         print(extracted)
 
+def test_query():
+    query = "Project X uses PostgreSQL." \
+        "What's 15 * 7?" \
+        "Thanks!" \
+        "I prefer pytest for my personal projects." \
+        "I'm debugging a PostgreSQL error right now." \
+        "Project X used Python 3.12 last year but now requires 3.13."
+    
+    run_agent(query)
+
+def test_process_new_memory():
+    query = "Project X uses PostgreSQL." \
+            "What's 15 * 7?" \
+            "Thanks!" \
+            "I prefer pytest for my personal projects." \
+            "I'm debugging a PostgreSQL error right now." \
+            "Project X used Python 3.12 last year but now requires 3.13."
+    process_new_memory(query)
+    
 if __name__ == "__main__":
-    test_memory_extraction()
+    test_process_new_memory()

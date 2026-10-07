@@ -1,8 +1,8 @@
 from build_context import generate_grounded_answer, build_retrieval_context
 from get_tools import get_agent_tools
 from execute_function_call import execute_function_call
-# from ollama import chat
 from utils import get_client, MODEL, SYSTEM_PROMPT
+from memory import process_new_memory
 
 
 def run_agent(
@@ -23,6 +23,8 @@ def run_agent(
         "retrieval_errors": [],
         "status": "running",
     }
+
+    process_new_memory(user_query)
 
     print(f"Running model: {MODEL}")
     print(f"=====Step {state['step']}=====")

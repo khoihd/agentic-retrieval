@@ -1,10 +1,10 @@
 from search_documents import rerank_chunks, format_document_retrieval_context
-from memory import rerank_memories, format_memory_retrieval_context
+from memory import Memory, rerank_memories, format_memory_retrieval_context
 from ollama import chat
 from utils import MODEL
 
 
-def build_retrieval_context(original_query, retrieved_chunks, retrieved_memories):
+def build_retrieval_context(original_query: str, retrieved_chunks: list, retrieved_memories: list[Memory]):
     chunk_seen = set()
     memory_seen = set()
     unique_chunks = []
@@ -20,17 +20,13 @@ def build_retrieval_context(original_query, retrieved_chunks, retrieved_memories
         unique_chunks.append(chunk)
 
     for memory in retrieved_memories:
-        memory_id = memory["id"]
-        if memory_id in memory_seen:
+        if memory.id in memory_seen:
             continue
 
-        memory_seen.add(memory_id)
+        memory_seen.add(memory.id)
         unique_memories.append(memory)
 
-    context_chunks = rerank_chunks(
-        original_query,
-        unique_chunks,
-    )
+    context_chunks = rerank_chunks(original_query,unique_chunks)
 
     context_memories = rerank_memories(original_query, unique_memories)
 
