@@ -1,7 +1,6 @@
 from search_documents import rerank_chunks, format_document_retrieval_context
 from memory import Memory, rerank_memories, format_memory_retrieval_context
-from ollama import chat
-from utils import MODEL
+from utils import get_client, MODEL
 
 
 def build_retrieval_context(original_query: str, retrieved_chunks: list, retrieved_memories: list[Memory]):
@@ -60,10 +59,9 @@ DOCUMENT EVIDENCE:
 MEMORY:
 {memory}
 """
-    response = chat(
+    response = get_client().chat.completions.create(
         model=MODEL,
-        messages=[{"role": "user", "content": prompt}],
-        think=False,
+        messages=[{"role": "user", "content": prompt}]
     )
 
-    return response.message.content
+    return response.choices[0].message.content

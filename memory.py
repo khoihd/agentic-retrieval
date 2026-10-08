@@ -93,7 +93,7 @@ def rerank_memories(original_query: str, memories: list[Memory]) -> list[Memory]
             memory_embedding,
         )
 
-        reranked_memory = {"memory": memory, "reranked_memory": rerank_score}
+        reranked_memory = {"memory": memory, "rerank_score": rerank_score}
         reranked_memories.append(reranked_memory)
 
     reranked_memories.sort(
@@ -124,9 +124,6 @@ def search_memory(query: str, scope: str = "", top_k: int = 3) -> list[Memory]:
     memories = load_memories()
     related_memories = find_related_memories(query, memories, scope, top_k)
 
-    if not related_memories:
-        return "No relevant memories found."
-
     return related_memories
 
 
@@ -149,14 +146,10 @@ def process_new_memory(user_query: str) -> None:
     # Extract key memories from user_query
     proposed_memories = extract_memories(user_query)
     
-    if not existing_memories:
-        persist_memories([create_memory(m) for m in proposed_memories])
-        return
-
     for proposed_memory in proposed_memories:
         new_memory = create_memory(proposed_memory)
 
-        related_memories = find_related_memories(new_memory.text, existing_memories, top_k=3)
+        related_memories = find_related_memories(new_memory.text, existing_memories, new_memory.scope)
         
         if not related_memories:
             existing_memories.append(new_memory)
