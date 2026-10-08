@@ -6,7 +6,8 @@ from memory import (
     create_memory,
     classify_memory_relationship,
     process_new_memory,
-    extract_memories
+    extract_memories,
+    write_memories
 )
 from run_client import run_agent
 from ollama import chat
@@ -193,6 +194,13 @@ def test_process_new_memory():
             "I'm debugging a PostgreSQL error right now." \
             "Project X used Python 3.12 last year but now requires 3.13."
     process_new_memory(query)
+
+def test_write_memories():
+    queries = ["Project X requires Python 3.13.",
+               "Project X uses PostgreSQL for its primary database.",
+               "Project X uses FastAPI."]
+
+    write_memories(queries)
     
 if __name__ == "__main__":
-    test_process_new_memory()
+    test_write_memories()

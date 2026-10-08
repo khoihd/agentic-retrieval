@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Literal
 
-from utils import embed_text, cosine_similarity, MODEL, MAX_MEMORY_RETRIEVAL
+from utils import embed_text, cosine_similarity, MODEL, MAX_MEMORY_RETRIEVAL, MEMORY_RELATIONSHIP_TOP_K, DEFAULT_MEMORY_SEARCH_TOP_K
 from MemoryRelationship import MemoryRelationship, MemoryRelationshipList
 from pydantic import BaseModel
 from utils import get_client
@@ -104,7 +104,7 @@ def rerank_memories(original_query: str, memories: list[Memory]) -> list[Memory]
     return [entry["memory"] for entry in reranked_memories]
 
 
-def search_memory(query: str, scope: str = "", top_k: int = 3) -> list[Memory]:
+def search_memory(query: str, scope: str = "", top_k: int = DEFAULT_MEMORY_SEARCH_TOP_K) -> list[Memory]:
     """
     Search persistent memory created from previous interactions.
     Use this to retrieve relevant user preferences, previous decisions,
@@ -213,7 +213,18 @@ def create_memory(memory: ExtractedMemory) -> Memory:
     )
 
 
-def find_related_memories(query: str, memories: list[Memory], scope: str = None, top_k: int = 3) -> list[Memory]:
+def write_memories(queries: list[str]) -> None:
+    persist_memories([])
+
+    new_memories = []
+    extracted_memories = extract_memories(".".join(queries))
+    for extracted_memory in extracted_memories:
+        new_memories.append(create_memory(extracted_memory))
+
+    persist_memories(new_memories)
+
+
+def find_related_memories(query: str, memories: list[Memory], scope: str = None, top_k: int = MEMORY_RELATIONSHIP_TOP_K) -> list[Memory]:
     """Return a list of memory and score"""
     query_embedding = embed_text(query)
     results = []

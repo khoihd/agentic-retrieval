@@ -7,6 +7,9 @@ MODEL = "qwen3.5:4b"
 # MODEL = "qwen3.5:9b"
 
 MAX_MEMORY_RETRIEVAL = 20
+DEFAULT_MEMORY_SEARCH_TOP_K = 3
+MEMORY_RELATIONSHIP_TOP_K = 10
+
 
 SYSTEM_PROMPT = """
 You are an assistant with access to tools.
