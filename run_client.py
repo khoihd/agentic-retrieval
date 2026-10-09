@@ -36,6 +36,10 @@ def run_agent(
             model=MODEL,
             messages=state["messages"],
             tools=agent_tools,
+            temperature=0,
+            extra_body={
+                "think": False
+            },
         )
 
         state["messages"].append(response.choices[0].message)

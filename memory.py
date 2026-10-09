@@ -21,6 +21,16 @@ class Memory(BaseModel):
     created_at: str
     status: Literal["active", "superseded", "conflicted"]
 
+class MemoryReference(BaseModel):
+    id: str
+    text: str
+    memory_type: str
+    scope: str
+    status: Literal["active", "superseded", "conflicted"]
+
+    @classmethod
+    def from_memory(cls, memory: Memory) -> "MemoryReference":
+        return cls.model_validate(memory.model_dump())
 
 class ExtractedMemory(BaseModel):
     text: str
@@ -35,46 +45,103 @@ class ExtractedMemoryList(BaseModel):
 def extract_memories(text: str) -> list[ExtractedMemory]:
     prompt = f"""
 
-Extract information from the input that is worth storing in long-term memory.
+You are a memory extraction system for an AI assistant.
+Your task is to extract durable, independently meaningful facts from
+the user's input that may be useful in future conversations.
 
-Store information that:
-- is likely to be useful in future interactions
-- is reasonably durable rather than temporary
-- describes user preferences, decisions, or project-specific facts
-- can be represented as a clear, self-contained fact
+EXTRACTION RULES:
 
-Do not store:
-- conversational filler
-- questions that contain no useful durable information
-- temporary task state that is only useful in the current interaction
-- information unlikely to matter in future interactions
+1. DURABILITY
+- Extract facts, preferences, decisions, requirements, and constraints
+  that are likely to remain useful in future conversations.
+- Ignore temporary activities, one-time questions, greetings, and
+  conversational filler.
+- Do not extract information merely because it is mentioned.
 
-Guidelines:
-- Each memory should contain one atomic fact when possible.
-- Rewrite memories as clear, self-contained statements.
-- A single input may produce zero, one, or multiple memories.
-- Choose an appropriate memory_type.
-- Choose an appropriate scope.
+2. ATOMICITY
+- Each memory must contain exactly ONE independent fact.
+- If a sentence contains multiple independent facts, split them into
+  separate memories, even if they concern the same subject.
+- Each memory must be understandable without the original input.
+- Never combine independent requirements, technologies, preferences,
+  or decisions into one memory.
 
-Scope rules:
-- Use "user" for information about the user's general preferences,
-  habits, or personal information.
-- For project-specific information, derive a normalized project scope.
-  For example:
-  "Project X" -> "project_x"
-  "Project Alpha" -> "project_alpha"
-- Do not use "global" for user-specific or project-specific information.
+Example:
+Input:
+"Project X now requires Python 3.14 and uses Redis for caching."
+
+Correct:
+- "Project X requires Python 3.14."
+- "Project X uses Redis for caching."
+
+Incorrect:
+- "Project X requires Python 3.14 and uses Redis for caching."
+
+3. TEMPORAL REASONING
+- When the user describes a change, extract the latest confirmed state.
+- Do not extract outdated information as a current fact.
+- Preserve important qualifiers such as "currently", "planned",
+  or "preferred" when they affect the meaning.
+- Do not treat plans as completed actions.
+
+Example:
+Input:
+"Project X used Python 3.12 last year but now requires Python 3.13."
+
+Correct:
+- "Project X requires Python 3.13."
+
+Incorrect:
+- "Project X requires Python 3.12."
+
+4. ACCURACY
+- Preserve the meaning of the user's statements.
+- Do not invent facts, preferences, or requirements.
+- Do not infer information that the user has not explicitly stated.
+- Do not resolve contradictions by guessing.
+- If no durable memories are present, return an empty list.
+
+5. MEMORY TYPE
+
+Assign a concise memory_type describing the fact.
+Examples:
+- project_requirement
+- project_technology
+- user_preference
+- user_profile
+- project_decision
+
+6. SCOPE
+
+Assign the appropriate scope:
+- "user": Facts or preferences about the user.
+- "project_x": Facts specifically about Project X.
+- For other explicitly named projects, use a consistent
+  project-specific scope.
+
+7. OUTPUT
+- Return memories matching the required structured output schema.
+- Each extracted memory must have:
+    - text
+    - memory_type
+    - scope
+
+- Do not include explanations or commentary.
+- Do not include IDs, embeddings, timestamps, or lifecycle statuses.
 
 INPUT:
 {text}
 """
-    response = get_client().beta.chat.completions.parse(
+    response = get_client().chat.completions.parse(
         model=MODEL,
         messages=[
             {"role": "user", "content": prompt},
         ],
         response_format=ExtractedMemoryList,
         temperature=0,
+        extra_body={
+            "think": False
+        },
     )
 
     extracted_memory_list = response.choices[0].message.parsed
@@ -147,6 +214,7 @@ def process_new_memory(user_query: str) -> None:
     proposed_memories = extract_memories(user_query)
     
     for proposed_memory in proposed_memories:
+        print(f"proposed_memory: {proposed_memory}")
         new_memory = create_memory(proposed_memory)
 
         related_memories = find_related_memories(new_memory.text, existing_memories, new_memory.scope)
@@ -217,7 +285,7 @@ def write_memories(queries: list[str]) -> None:
     persist_memories([])
 
     new_memories = []
-    extracted_memories = extract_memories(".".join(queries))
+    extracted_memories = extract_memories("\n".join(queries))
     for extracted_memory in extracted_memories:
         new_memories.append(create_memory(extracted_memory))
 
@@ -242,6 +310,9 @@ def find_related_memories(query: str, memories: list[Memory], scope: str = None,
 
 
 def classify_memory_relationship(new_memory: Memory, existing_memories: list[Memory]):
+    new_memory = MemoryReference.from_memory(new_memory)
+    existing_memories = [MemoryReference.from_memory(memory) for memory in existing_memories]
+    
     prompt = f"""
     Find the semantic relationship between the new memory, namely NEW_MEMORY, and every existing memory, called EXISTING_MEMORY, in the collection EXISTING_MEMORIES
     Rules:
@@ -272,7 +343,13 @@ def classify_memory_relationship(new_memory: Memory, existing_memories: list[Mem
         model=MODEL,
         messages=[{"role": "user", "content": prompt}],
         response_format=MemoryRelationshipList,
+        temperature=0,
+        extra_body={
+            "think": False
+        },
     )
+
+    print(response.choices[0].message.parsed.relationships)
 
     return response.choices[0].message.parsed.relationships
 

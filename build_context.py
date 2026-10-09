@@ -61,7 +61,11 @@ MEMORY:
 """
     response = get_client().chat.completions.create(
         model=MODEL,
-        messages=[{"role": "user", "content": prompt}]
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0,
+        extra_body={
+            "think": False
+        },
     )
 
     return response.choices[0].message.content

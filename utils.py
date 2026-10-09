@@ -1,10 +1,9 @@
 import numpy as np
 from dotenv import load_dotenv
 from openai import OpenAI
-import ollama
 
-MODEL = "qwen3.5:4b"
-# MODEL = "qwen3.5:9b"
+MODEL = "mlx-community/Qwen3.5-4B-MLX-4bit"
+EMBEDDING_MODEL = "mlx-community/bge-small-en-v1.5-4bit"
 
 MAX_MEMORY_RETRIEVAL = 20
 DEFAULT_MEMORY_SEARCH_TOP_K = 3
@@ -33,21 +32,22 @@ def get_client():
     global client
     if client:
         return client 
-    
-    # Local Ollama
+
+    # Local MLX
     client = OpenAI(
-        base_url="http://localhost:11434/v1",
-        api_key="ollama",
+        base_url="http://localhost:8080/v1",
+        api_key="mlx",
     )
     
     print(f"Running model {MODEL}")
+    print(f"Running embedding model {EMBEDDING_MODEL}")
 
     return client
 
 def embed_text(text: str) -> list[float]:
-    response = ollama.embed(model="nomic-embed-text", input=text)
+    response = client.embeddings.create(model=EMBEDDING_MODEL, input=text)
 
-    return response["embeddings"][0]
+    return response.data[0].embedding
 
 
 def cosine_similarity(a, b):
