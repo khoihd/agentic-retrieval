@@ -1,5 +1,5 @@
 from memory import Memory, format_memory_retrieval_context, rerank_memories
-from search_documents import format_document_retrieval_context, rerank_chunks, Chunk
+from search_documents import Chunk, format_document_retrieval_context, rerank_chunks
 from utils import MODEL, get_client
 
 

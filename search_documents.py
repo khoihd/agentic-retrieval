@@ -1,7 +1,10 @@
 import re
 from pathlib import Path
+
 from pydantic import BaseModel
+
 from utils import cosine_similarity, embed_text
+
 
 class Document(BaseModel):
     document_id: str
