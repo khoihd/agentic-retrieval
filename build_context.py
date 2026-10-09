@@ -1,6 +1,6 @@
-from search_documents import rerank_chunks, format_document_retrieval_context
-from memory import Memory, rerank_memories, format_memory_retrieval_context
-from utils import get_client, MODEL
+from memory import Memory, format_memory_retrieval_context, rerank_memories
+from search_documents import format_document_retrieval_context, rerank_chunks
+from utils import MODEL, get_client
 
 
 def build_retrieval_context(original_query: str, retrieved_chunks: list, retrieved_memories: list[Memory]):

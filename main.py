@@ -1,5 +1,5 @@
+from memory import create_memory, persist_memories
 from run_client import run_agent
-from memory import persist_memories, create_memory
 
 
 def test_calling_memory():

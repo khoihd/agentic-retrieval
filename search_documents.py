@@ -1,6 +1,7 @@
 import re
 from pathlib import Path
-from utils import embed_text, cosine_similarity
+
+from utils import cosine_similarity, embed_text
 
 
 def split_into_sentences(text):

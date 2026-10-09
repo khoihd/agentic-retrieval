@@ -3,11 +3,18 @@ import uuid
 from datetime import datetime, timezone
 from typing import Literal
 
-from utils import embed_text, cosine_similarity, MODEL, MAX_MEMORY_RETRIEVAL, MEMORY_RELATIONSHIP_TOP_K, DEFAULT_MEMORY_SEARCH_TOP_K
-from MemoryRelationship import MemoryRelationship, MemoryRelationshipList
 from pydantic import BaseModel
-from utils import get_client
 
+from MemoryRelationship import MemoryRelationship, MemoryRelationshipList
+from utils import (
+    DEFAULT_MEMORY_SEARCH_TOP_K,
+    MAX_MEMORY_RETRIEVAL,
+    MEMORY_RELATIONSHIP_TOP_K,
+    MODEL,
+    cosine_similarity,
+    embed_text,
+    get_client,
+)
 
 MEMORY_FILE = "memories.json"
 
@@ -292,7 +299,7 @@ def write_memories(queries: list[str]) -> None:
     persist_memories(new_memories)
 
 
-def find_related_memories(query: str, memories: list[Memory], scope: str = None, top_k: int = MEMORY_RELATIONSHIP_TOP_K) -> list[Memory]:
+def find_related_memories(query: str, memories: list[Memory], scope: str = "", top_k: int = MEMORY_RELATIONSHIP_TOP_K) -> list[Memory]:
     """Return a list of memory and score"""
     query_embedding = embed_text(query)
     results = []

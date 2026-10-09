@@ -1,5 +1,7 @@
-from get_tools import get_tool_registry
 import json
+
+from get_tools import get_tool_registry
+
 
 def execute_function_call(function_call):
     tool_name = function_call.function.name

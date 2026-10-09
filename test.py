@@ -1,4 +1,5 @@
 from memory import (
+    MemoryReference,
     classify_memory_relationship,
     create_memory,
     extract_memories,
@@ -8,7 +9,6 @@ from memory import (
     process_new_memory,
     search_memory,
     write_memories,
-    MemoryReference,
 )
 from run_client import run_agent
 from utils import MODEL, get_client

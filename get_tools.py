@@ -1,6 +1,6 @@
 from get_stock_price import get_stock_price, get_stock_price_declaration
-from search_documents import search_documents, get_search_documents_declaration
-from memory import search_memory, get_search_memory_declaration
+from memory import get_search_memory_declaration, search_memory
+from search_documents import get_search_documents_declaration, search_documents
 
 
 def get_agent_tools() -> list:
