@@ -94,7 +94,7 @@ def run_agent(
                     elif function_call.function.name == "search_memory":
                         for memory in result["result"]:
                             state["retrieved_memories"].append(memory)
-                except Exception as e:
+                except (ValueError, TypeError, KeyError) as e:
                     error = {
                         "error": "retrieval_failed",
                         "message": str(e),
