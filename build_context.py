@@ -1,5 +1,5 @@
 from memory import Memory, format_memory_retrieval_context, rerank_memories
-from search_documents import format_document_retrieval_context, rerank_chunks
+from search_documents import format_document_retrieval_context, rerank_chunks, Chunk
 from utils import MODEL, get_client
 
 
@@ -32,11 +32,7 @@ def build_retrieval_context(original_query: str, retrieved_chunks: list, retriev
     return context_chunks, context_memories
 
 
-def generate_grounded_answer(
-    user_query,
-    context_documents,
-    context_memories,
-):
+def generate_grounded_answer(user_query: str, context_documents: list[Chunk], context_memories: list[Memory]) -> str:
     evidence = format_document_retrieval_context(context_documents)
     memory = format_memory_retrieval_context(context_memories)
     prompt = f"""
